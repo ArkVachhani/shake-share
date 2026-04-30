@@ -1,0 +1,622 @@
+name: Build ShakeShare APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Flutter project files
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/shakeshare/app
+          mkdir -p android/app/src/main/res/values
+          mkdir -p android/gradle/wrapper
+          mkdir -p lib/services lib/screens lib/widgets
+
+          cat > pubspec.yaml << 'EOF'
+name: shake_share
+description: Shake to share files wirelessly
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  nearby_connections: ^3.0.0
+  sensors_plus: ^4.0.0
+  permission_handler: ^11.0.0
+  image_picker: ^1.0.7
+  path_provider: ^2.1.1
+  google_fonts: ^6.1.0
+  flutter_animate: ^4.3.0
+  vibration: ^1.8.4
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+flutter:
+  uses-material-design: true
+EOF
+
+          cat > android/settings.gradle << 'EOF'
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        file("local.properties").withInputStream { properties.load(it) }
+        def flutterSdkPath = properties.getProperty("flutter.sdk")
+        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+        return flutterSdkPath
+    }()
+    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application" version "8.1.4" apply false
+    id "org.jetbrains.kotlin.android" version "1.9.0" apply false
+}
+include ":app"
+EOF
+
+          echo '// Top-level build configuration.' > android/build.gradle
+
+          cat > android/gradle.properties << 'EOF'
+org.gradle.jvmargs=-Xmx4G
+android.useAndroidX=true
+android.enableJetifier=true
+EOF
+
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-all.zip
+EOF
+
+          cat > android/app/build.gradle << 'EOF'
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+android {
+    namespace "com.shakeshare.app"
+    compileSdk 34
+    ndkVersion flutter.ndkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions { jvmTarget = "1.8" }
+    sourceSets { main.java.srcDirs += "src/main/kotlin" }
+    defaultConfig {
+        applicationId "com.shakeshare.app"
+        minSdk 21
+        targetSdk 34
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+        multiDexEnabled true
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+    packagingOptions {
+        exclude "META-INF/DEPENDENCIES"
+        exclude "META-INF/LICENSE"
+        exclude "META-INF/NOTICE"
+    }
+}
+flutter { source "../.." }
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0"
+    implementation "androidx.multidex:multidex:2.0.1"
+}
+EOF
+
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <application android:label="ShakeShare" android:name="${applicationName}" android:icon="@mipmap/ic_launcher" android:requestLegacyExternalStorage="true">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
+            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme"/>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <meta-data android:name="flutterEmbedding" android:value="2"/>
+    </application>
+</manifest>
+EOF
+
+          cat > android/app/src/main/kotlin/com/shakeshare/app/MainActivity.kt << 'EOF'
+package com.shakeshare.app
+import io.flutter.embedding.android.FlutterActivity
+class MainActivity: FlutterActivity()
+EOF
+
+          cat > android/app/src/main/res/values/strings.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources><string name="app_name">ShakeShare</string></resources>
+EOF
+
+          cat > android/app/src/main/res/values/styles.xml << 'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
+EOF
+
+          cat > lib/main.dart << 'EOF'
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'app.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runApp(const ShakeShareApp());
+}
+EOF
+
+          cat > lib/app.dart << 'EOF'
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'screens/home_screen.dart';
+class ShakeShareApp extends StatelessWidget {
+  const ShakeShareApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'ShakeShare',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF97316), brightness: Brightness.dark)
+            .copyWith(surface: const Color(0xFF1A1A1A)),
+        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+EOF
+
+          cat > lib/services/shake_service.dart << 'EOF'
+import 'dart:async';
+import 'dart:math';
+import 'package:sensors_plus/sensors_plus.dart';
+class ShakeService {
+  static const double _threshold = 14.0;
+  static const int _debounceMs = 900;
+  StreamSubscription<AccelerometerEvent>? _sub;
+  DateTime? _lastShake;
+  void start(void Function() onShake) {
+    _sub = accelerometerEventStream(samplingPeriod: SensorInterval.uiInterval).listen((e) {
+      final mag = sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
+      if (mag > _threshold) {
+        final now = DateTime.now();
+        if (_lastShake == null || now.difference(_lastShake!).inMilliseconds > _debounceMs) {
+          _lastShake = now;
+          onShake();
+        }
+      }
+    });
+  }
+  void stop() { _sub?.cancel(); _sub = null; }
+}
+EOF
+
+          cat > lib/services/nearby_service.dart << 'EOF'
+import 'dart:typed_data';
+import 'package:nearby_connections/nearby_connections.dart';
+class DeviceInfo {
+  final String endpointId;
+  final String name;
+  const DeviceInfo({required this.endpointId, required this.name});
+}
+enum NearbyState { idle, searching, connected, transferring, done, error }
+class NearbyService {
+  static final NearbyService _i = NearbyService._();
+  factory NearbyService() => _i;
+  NearbyService._();
+  static const String _serviceId = 'com.shakeshare.app';
+  static const Strategy _strategy = Strategy.P2P_STAR;
+  String _userName = 'SS-User';
+  String? _connectedId;
+  NearbyState _state = NearbyState.idle;
+  void Function(DeviceInfo)? onDeviceFound;
+  void Function(String)? onDeviceLost;
+  void Function(String, String)? onIncomingRequest;
+  void Function(bool)? onConnectionResult;
+  void Function()? onDisconnected;
+  void Function(Uint8List)? onDataReceived;
+  void Function(double)? onProgress;
+  void Function(NearbyState)? onStateChanged;
+  NearbyState get state => _state;
+  String? get connectedId => _connectedId;
+  void setUserName(String name) => _userName = name;
+  void _setState(NearbyState s) { _state = s; onStateChanged?.call(s); }
+  Future<bool> startSearching() async {
+    try {
+      await Nearby().startAdvertising(_userName, _strategy, serviceId: _serviceId,
+        onConnectionInitiated: (id, info) { onIncomingRequest?.call(id, info.endpointName); },
+        onConnectionResult: (id, status) {
+          if (status.isSuccess) { _connectedId = id; _setState(NearbyState.connected); onConnectionResult?.call(true); }
+          else { _setState(NearbyState.searching); onConnectionResult?.call(false); }
+        },
+        onDisconnected: (id) { _connectedId = null; _setState(NearbyState.idle); onDisconnected?.call(); },
+      );
+      await Nearby().startDiscovery(_userName, _strategy, serviceId: _serviceId,
+        onEndpointFound: (id, name, svcId) { onDeviceFound?.call(DeviceInfo(endpointId: id, name: name)); },
+        onEndpointLost: (id) { onDeviceLost?.call(id ?? ''); },
+      );
+      _setState(NearbyState.searching);
+      return true;
+    } catch (e) { _setState(NearbyState.error); return false; }
+  }
+  Future<void> requestConnection(String endpointId) async {
+    try {
+      await Nearby().requestConnection(_userName, endpointId,
+        onConnectionInitiated: (id, info) { onIncomingRequest?.call(id, info.endpointName); },
+        onConnectionResult: (id, status) {
+          if (status.isSuccess) { _connectedId = id; _setState(NearbyState.connected); onConnectionResult?.call(true); }
+          else { onConnectionResult?.call(false); }
+        },
+        onDisconnected: (id) { _connectedId = null; _setState(NearbyState.idle); onDisconnected?.call(); },
+      );
+    } catch (e) { _setState(NearbyState.error); }
+  }
+  Future<void> acceptConnection(String endpointId) async {
+    try {
+      await Nearby().acceptConnection(endpointId,
+        onPayLoadRecieved: (id, payload) {
+          if (payload.type == PayloadType.BYTES && payload.bytes != null) {
+            onDataReceived?.call(payload.bytes!);
+            onProgress?.call(1.0);
+            _setState(NearbyState.done);
+          }
+        },
+        onPayloadTransferUpdate: (id, update) {
+          if (update.totalBytes > 0) onProgress?.call(update.bytesTransferred / update.totalBytes);
+          if (update.status == PayloadStatus.SUCCESS) _setState(NearbyState.done);
+        },
+      );
+    } catch (e) { _setState(NearbyState.error); }
+  }
+  Future<void> rejectConnection(String endpointId) async {
+    try { await Nearby().rejectConnection(endpointId); } catch (_) {}
+  }
+  Future<bool> sendBytes(String endpointId, Uint8List data) async {
+    try {
+      _setState(NearbyState.transferring);
+      await Nearby().sendBytesPayload(endpointId, data);
+      onProgress?.call(1.0);
+      _setState(NearbyState.done);
+      return true;
+    } catch (e) { _setState(NearbyState.error); return false; }
+  }
+  Future<void> stopAll() async {
+    try { await Nearby().stopAllEndpoints(); await Nearby().stopAdvertising(); await Nearby().stopDiscovery(); } catch (_) {}
+    _connectedId = null;
+    _setState(NearbyState.idle);
+  }
+}
+EOF
+
+          cat > lib/widgets/radar_widget.dart << 'EOF'
+import 'package:flutter/material.dart';
+class RadarWidget extends StatefulWidget {
+  final bool isActive;
+  const RadarWidget({super.key, required this.isActive});
+  @override
+  State<RadarWidget> createState() => _RadarWidgetState();
+}
+class _RadarWidgetState extends State<RadarWidget> with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (i) => AnimationController(vsync: this, duration: const Duration(milliseconds: 2000)));
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 650), () { if (mounted) _controllers[i].repeat(); });
+    }
+  }
+  @override
+  void dispose() { for (var c in _controllers) c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: 220, height: 220,
+      child: Stack(alignment: Alignment.center, children: [
+        ..._controllers.map((ctrl) => AnimatedBuilder(animation: ctrl, builder: (_, __) {
+          final v = ctrl.value;
+          return Container(width: 60.0 + v * 160, height: 60.0 + v * 160,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFF97316).withOpacity(widget.isActive ? ((1.0 - v) * 0.85).clamp(0.0, 1.0) : 0.08), width: 1.5)));
+        })),
+        Container(width: 68, height: 68,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF97316).withOpacity(0.12), border: Border.all(color: const Color(0xFFF97316), width: 2)),
+          child: Icon(widget.isActive ? Icons.wifi_tethering : Icons.phone_android, color: const Color(0xFFF97316), size: 32)),
+      ]),
+    );
+  }
+}
+EOF
+
+          cat > lib/screens/home_screen.dart << 'DARTEOF'
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:vibration/vibration.dart';
+import '../services/nearby_service.dart';
+import '../services/shake_service.dart';
+import '../widgets/radar_widget.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final NearbyService _nearby = NearbyService();
+  final ShakeService _shake = ShakeService();
+  final ImagePicker _picker = ImagePicker();
+  bool _isSearching = false, _transferring = false, _done = false;
+  double _progress = 0;
+  List<DeviceInfo> _devices = [];
+  String _status = 'Shake your phone to find nearby devices';
+  String _deviceName = '';
+  static const _orange = Color(0xFFF97316);
+  static const _bg = Color(0xFF0F0F0F);
+  static const _card = Color(0xFF1A1A1A);
+
+  @override
+  void initState() {
+    super.initState();
+    _deviceName = 'SS-${DateTime.now().millisecondsSinceEpoch % 9000 + 1000}';
+    _nearby.setUserName(_deviceName);
+    _requestPermissions();
+    _setupCallbacks();
+    _shake.start(_onShake);
+  }
+
+  Future<void> _requestPermissions() async {
+    await [Permission.location, Permission.bluetooth, Permission.bluetoothScan,
+      Permission.bluetoothAdvertise, Permission.bluetoothConnect,
+      Permission.nearbyWifiDevices, Permission.photos, Permission.storage].request();
+  }
+
+  void _setupCallbacks() {
+    _nearby.onDeviceFound = (d) { if (!mounted) return; setState(() {
+      if (!_devices.any((x) => x.endpointId == d.endpointId)) { _devices.add(d); _status = '${_devices.length} device(s) found!'; }
+    }); };
+    _nearby.onDeviceLost = (id) { if (!mounted) return; setState(() {
+      _devices.removeWhere((d) => d.endpointId == id);
+      if (_devices.isEmpty && _isSearching) _status = 'Searching...';
+    }); };
+    _nearby.onIncomingRequest = (id, name) => _showDialog(id, name);
+    _nearby.onConnectionResult = (ok) { if (!mounted) return;
+      setState(() { _status = ok ? 'Connected! Select what to share below' : 'Failed. Try again.'; }); };
+    _nearby.onDataReceived = (data) { if (!mounted) return;
+      setState(() { _transferring = false; _done = true; _progress = 1.0; _status = 'File received!'; }); };
+    _nearby.onProgress = (p) { if (mounted) setState(() => _progress = p); };
+    _nearby.onDisconnected = () { if (!mounted) return;
+      setState(() { _isSearching = false; _devices.clear(); _status = 'Disconnected. Shake to reconnect.'; }); };
+  }
+
+  void _onShake() {
+    if (_isSearching || _transferring) return;
+    Vibration.vibrate(duration: 150);
+    setState(() { _isSearching = true; _done = false; _devices.clear(); _status = 'Searching for nearby devices...'; });
+    _nearby.startSearching();
+  }
+
+  void _showDialog(String endpointId, String deviceName) {
+    if (!mounted) return;
+    showModalBottomSheet(context: context, backgroundColor: _card,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade700, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 20),
+          Container(width: 68, height: 68,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _orange.withOpacity(0.12), border: Border.all(color: _orange, width: 2)),
+            child: const Icon(Icons.phone_android, color: _orange, size: 32)),
+          const SizedBox(height: 14),
+          Text(deviceName, style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('wants to send you files', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+          const SizedBox(height: 28),
+          Row(children: [
+            Expanded(child: OutlinedButton(
+              onPressed: () { Navigator.pop(context); _nearby.rejectConnection(endpointId); },
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: Text('Decline', style: GoogleFonts.poppins(color: Colors.redAccent, fontWeight: FontWeight.w600)))),
+            const SizedBox(width: 12),
+            Expanded(child: ElevatedButton(
+              onPressed: () { Navigator.pop(context); _nearby.acceptConnection(endpointId);
+                setState(() { _transferring = true; _progress = 0; _status = 'Ready to receive...'; }); },
+              style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: Text('Accept', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)))),
+          ]),
+        ]))));
+  }
+
+  Future<void> _sendPhoto() async {
+    if (_nearby.connectedId == null) { _snack('Shake first and connect to a device!'); return; }
+    final img = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (img == null) return;
+    final Uint8List bytes = await File(img.path).readAsBytes();
+    setState(() { _transferring = true; _done = false; _progress = 0; _status = 'Sending photo...'; });
+    final ok = await _nearby.sendBytes(_nearby.connectedId!, bytes);
+    if (!mounted) return;
+    setState(() { _transferring = !ok; _done = ok; _progress = ok ? 1.0 : 0; _status = ok ? 'Photo sent! âœ“' : 'Send failed.'; });
+  }
+
+  Future<void> _stopAll() async {
+    await _nearby.stopAll();
+    setState(() { _isSearching = false; _devices.clear(); _transferring = false; _done = false; _progress = 0; _status = 'Shake your phone to find nearby devices'; });
+  }
+
+  void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg, style: GoogleFonts.poppins(fontSize: 13)), backgroundColor: _card,
+    behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    margin: const EdgeInsets.all(16)));
+
+  @override
+  void dispose() { _shake.stop(); _nearby.stopAll(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(backgroundColor: _bg, body: SafeArea(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(children: [
+        const SizedBox(height: 20), _header(), const SizedBox(height: 16),
+        Expanded(child: _body()), _shareRow(), const SizedBox(height: 20)]))));
+  }
+
+  Widget _header() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('ShakeShare', style: GoogleFonts.poppins(color: _orange, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+      Text(_deviceName, style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 12))]),
+    if (_isSearching || _transferring)
+      GestureDetector(onTap: _stopAll, child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.withOpacity(0.35))),
+        child: Row(children: [const Icon(Icons.stop_rounded, color: Colors.redAccent, size: 16), const SizedBox(width: 5),
+          Text('Stop', style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 13))]))),
+  ]);
+
+  Widget _body() {
+    if (_transferring || _done) return _transferView();
+    return Column(children: [
+      Expanded(child: Center(child: RadarWidget(isActive: _isSearching))),
+      Text(_status, textAlign: TextAlign.center, style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.75), fontSize: 14, height: 1.5)).animate().fadeIn(duration: 300.ms),
+      const SizedBox(height: 16),
+      if (_devices.isNotEmpty) Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('NEARBY', style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+        const SizedBox(height: 8),
+        ..._devices.map((d) => Container(margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(14), border: Border.all(color: _orange.withOpacity(0.2))),
+          child: Row(children: [
+            Container(width: 38, height: 38, decoration: BoxDecoration(shape: BoxShape.circle, color: _orange.withOpacity(0.1)),
+              child: const Icon(Icons.phone_android, color: _orange, size: 18)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(d.name, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+              Text('Tap to connect', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11))])),
+            ElevatedButton(onPressed: () => _nearby.requestConnection(d.endpointId),
+              style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: Text('Connect', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
+          ])).animate().slideX(begin: 0.15, curve: Curves.easeOut).fadeIn(duration: 250.ms)),
+      ]),
+      if (!_isSearching) Padding(padding: const EdgeInsets.only(top: 12, bottom: 8),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.vibration, color: Colors.grey, size: 15), const SizedBox(width: 6),
+          Text('Shake to start discovering', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12))])),
+    ]);
+  }
+
+  Widget _transferView() {
+    final color = _done ? Colors.greenAccent : _orange;
+    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(width: 100, height: 100, decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1)),
+        child: Icon(_done ? Icons.check_circle_outline : Icons.sync, size: 52, color: color))
+          .animate(onPlay: (c) => _done ? null : c.repeat()).rotate(duration: _done ? 0.ms : 1200.ms),
+      const SizedBox(height: 28),
+      Text(_done ? 'Transfer Complete! âœ“' : 'Transferring...', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      Text(_status, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
+      const SizedBox(height: 24),
+      ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: _progress, minHeight: 10, backgroundColor: const Color(0xFF2A2A2A), valueColor: AlwaysStoppedAnimation(color))),
+      const SizedBox(height: 8),
+      Text('${(_progress * 100).toStringAsFixed(0)}%', style: GoogleFonts.poppins(color: color, fontWeight: FontWeight.w700, fontSize: 16)),
+      if (_done) ...[const SizedBox(height: 36), ElevatedButton.icon(
+        onPressed: () => setState(() { _done = false; _transferring = false; _progress = 0; }),
+        icon: const Icon(Icons.add, size: 18),
+        label: Text('Share More', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+        style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))))],
+    ]);
+  }
+
+  Widget _shareRow() => Row(children: [
+    _shareBtn(Icons.photo_library_outlined, 'Photo', _sendPhoto),
+    const SizedBox(width: 10),
+    _shareBtn(Icons.insert_drive_file_outlined, 'File', () => _snack('Connect to a device first!')),
+    const SizedBox(width: 10),
+    _shareBtn(Icons.person_outline, 'Contact', () => _snack('Connect to a device first!')),
+  ]);
+
+  Widget _shareBtn(IconData icon, String label, VoidCallback onTap) => Expanded(child: GestureDetector(onTap: onTap,
+    child: Container(padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.04))),
+      child: Column(children: [Icon(icon, color: _orange, size: 26), const SizedBox(height: 5),
+        Text(label, style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.w500))]))));
+}
+DARTEOF
+
+          echo "âœ… All project files created!"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.6'
+          channel: stable
+          cache: true
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShakeShare-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
