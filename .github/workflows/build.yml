@@ -9,591 +9,177 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Create Flutter project files
+      - name: Restore project files from archive
         run: |
-          mkdir -p android/app/src/main/kotlin/com/shakeshare/app
-          mkdir -p android/app/src/main/res/values
-          mkdir -p android/gradle/wrapper
-          mkdir -p lib/services lib/screens lib/widgets
-
-          cat > pubspec.yaml << 'EOF'
-name: shake_share
-description: Shake to share files wirelessly
-publish_to: 'none'
-version: 1.0.0+1
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-dependencies:
-  flutter:
-    sdk: flutter
-  nearby_connections: ^3.0.0
-  sensors_plus: ^4.0.0
-  permission_handler: ^11.0.0
-  image_picker: ^1.0.7
-  path_provider: ^2.1.1
-  google_fonts: ^6.1.0
-  flutter_animate: ^4.3.0
-  vibration: ^1.8.4
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
-flutter:
-  uses-material-design: true
-EOF
-
-          cat > android/settings.gradle << 'EOF'
-pluginManagement {
-    def flutterSdkPath = {
-        def properties = new Properties()
-        file("local.properties").withInputStream { properties.load(it) }
-        def flutterSdkPath = properties.getProperty("flutter.sdk")
-        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-        return flutterSdkPath
-    }()
-    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-plugins {
-    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "8.1.4" apply false
-    id "org.jetbrains.kotlin.android" version "1.9.0" apply false
-}
-include ":app"
-EOF
-
-          echo '// Top-level build configuration.' > android/build.gradle
-
-          cat > android/gradle.properties << 'EOF'
-org.gradle.jvmargs=-Xmx4G
-android.useAndroidX=true
-android.enableJetifier=true
-EOF
-
-          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-all.zip
-EOF
-
-          cat > android/app/build.gradle << 'EOF'
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
-android {
-    namespace "com.shakeshare.app"
-    compileSdk 34
-    ndkVersion flutter.ndkVersion
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions { jvmTarget = "1.8" }
-    sourceSets { main.java.srcDirs += "src/main/kotlin" }
-    defaultConfig {
-        applicationId "com.shakeshare.app"
-        minSdk 21
-        targetSdk 34
-        versionCode flutter.versionCode
-        versionName flutter.versionName
-        multiDexEnabled true
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
-        }
-    }
-    packagingOptions {
-        exclude "META-INF/DEPENDENCIES"
-        exclude "META-INF/LICENSE"
-        exclude "META-INF/NOTICE"
-    }
-}
-flutter { source "../.." }
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0"
-    implementation "androidx.multidex:multidex:2.0.1"
-}
-EOF
-
-          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:usesPermissionFlags="neverForLocation"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <application android:label="ShakeShare" android:name="${applicationName}" android:icon="@mipmap/ic_launcher" android:requestLegacyExternalStorage="true">
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
-            <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme"/>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-        <meta-data android:name="flutterEmbedding" android:value="2"/>
-    </application>
-</manifest>
-EOF
-
-          cat > android/app/src/main/kotlin/com/shakeshare/app/MainActivity.kt << 'EOF'
-package com.shakeshare.app
-import io.flutter.embedding.android.FlutterActivity
-class MainActivity: FlutterActivity()
-EOF
-
-          cat > android/app/src/main/res/values/strings.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<resources><string name="app_name">ShakeShare</string></resources>
-EOF
-
-          cat > android/app/src/main/res/values/styles.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">@android:color/black</item>
-    </style>
-    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">@android:color/black</item>
-    </style>
-</resources>
-EOF
-
-          cat > lib/main.dart << 'EOF'
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'app.dart';
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const ShakeShareApp());
-}
-EOF
-
-          cat > lib/app.dart << 'EOF'
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'screens/home_screen.dart';
-class ShakeShareApp extends StatelessWidget {
-  const ShakeShareApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ShakeShare',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF97316), brightness: Brightness.dark)
-            .copyWith(surface: const Color(0xFF1A1A1A)),
-        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme),
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
-EOF
-
-          cat > lib/services/shake_service.dart << 'EOF'
-import 'dart:async';
-import 'dart:math';
-import 'package:sensors_plus/sensors_plus.dart';
-class ShakeService {
-  static const double _threshold = 14.0;
-  static const int _debounceMs = 900;
-  StreamSubscription<AccelerometerEvent>? _sub;
-  DateTime? _lastShake;
-  void start(void Function() onShake) {
-    _sub = accelerometerEventStream(samplingPeriod: SensorInterval.uiInterval).listen((e) {
-      final mag = sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
-      if (mag > _threshold) {
-        final now = DateTime.now();
-        if (_lastShake == null || now.difference(_lastShake!).inMilliseconds > _debounceMs) {
-          _lastShake = now;
-          onShake();
-        }
-      }
-    });
-  }
-  void stop() { _sub?.cancel(); _sub = null; }
-}
-EOF
-
-          cat > lib/services/nearby_service.dart << 'EOF'
-import 'dart:typed_data';
-import 'package:nearby_connections/nearby_connections.dart';
-class DeviceInfo {
-  final String endpointId;
-  final String name;
-  const DeviceInfo({required this.endpointId, required this.name});
-}
-enum NearbyState { idle, searching, connected, transferring, done, error }
-class NearbyService {
-  static final NearbyService _i = NearbyService._();
-  factory NearbyService() => _i;
-  NearbyService._();
-  static const String _serviceId = 'com.shakeshare.app';
-  static const Strategy _strategy = Strategy.P2P_STAR;
-  String _userName = 'SS-User';
-  String? _connectedId;
-  NearbyState _state = NearbyState.idle;
-  void Function(DeviceInfo)? onDeviceFound;
-  void Function(String)? onDeviceLost;
-  void Function(String, String)? onIncomingRequest;
-  void Function(bool)? onConnectionResult;
-  void Function()? onDisconnected;
-  void Function(Uint8List)? onDataReceived;
-  void Function(double)? onProgress;
-  void Function(NearbyState)? onStateChanged;
-  NearbyState get state => _state;
-  String? get connectedId => _connectedId;
-  void setUserName(String name) => _userName = name;
-  void _setState(NearbyState s) { _state = s; onStateChanged?.call(s); }
-  Future<bool> startSearching() async {
-    try {
-      await Nearby().startAdvertising(_userName, _strategy, serviceId: _serviceId,
-        onConnectionInitiated: (id, info) { onIncomingRequest?.call(id, info.endpointName); },
-        onConnectionResult: (id, status) {
-          if (status.isSuccess) { _connectedId = id; _setState(NearbyState.connected); onConnectionResult?.call(true); }
-          else { _setState(NearbyState.searching); onConnectionResult?.call(false); }
-        },
-        onDisconnected: (id) { _connectedId = null; _setState(NearbyState.idle); onDisconnected?.call(); },
-      );
-      await Nearby().startDiscovery(_userName, _strategy, serviceId: _serviceId,
-        onEndpointFound: (id, name, svcId) { onDeviceFound?.call(DeviceInfo(endpointId: id, name: name)); },
-        onEndpointLost: (id) { onDeviceLost?.call(id ?? ''); },
-      );
-      _setState(NearbyState.searching);
-      return true;
-    } catch (e) { _setState(NearbyState.error); return false; }
-  }
-  Future<void> requestConnection(String endpointId) async {
-    try {
-      await Nearby().requestConnection(_userName, endpointId,
-        onConnectionInitiated: (id, info) { onIncomingRequest?.call(id, info.endpointName); },
-        onConnectionResult: (id, status) {
-          if (status.isSuccess) { _connectedId = id; _setState(NearbyState.connected); onConnectionResult?.call(true); }
-          else { onConnectionResult?.call(false); }
-        },
-        onDisconnected: (id) { _connectedId = null; _setState(NearbyState.idle); onDisconnected?.call(); },
-      );
-    } catch (e) { _setState(NearbyState.error); }
-  }
-  Future<void> acceptConnection(String endpointId) async {
-    try {
-      await Nearby().acceptConnection(endpointId,
-        onPayLoadRecieved: (id, payload) {
-          if (payload.type == PayloadType.BYTES && payload.bytes != null) {
-            onDataReceived?.call(payload.bytes!);
-            onProgress?.call(1.0);
-            _setState(NearbyState.done);
-          }
-        },
-        onPayloadTransferUpdate: (id, update) {
-          if (update.totalBytes > 0) onProgress?.call(update.bytesTransferred / update.totalBytes);
-          if (update.status == PayloadStatus.SUCCESS) _setState(NearbyState.done);
-        },
-      );
-    } catch (e) { _setState(NearbyState.error); }
-  }
-  Future<void> rejectConnection(String endpointId) async {
-    try { await Nearby().rejectConnection(endpointId); } catch (_) {}
-  }
-  Future<bool> sendBytes(String endpointId, Uint8List data) async {
-    try {
-      _setState(NearbyState.transferring);
-      await Nearby().sendBytesPayload(endpointId, data);
-      onProgress?.call(1.0);
-      _setState(NearbyState.done);
-      return true;
-    } catch (e) { _setState(NearbyState.error); return false; }
-  }
-  Future<void> stopAll() async {
-    try { await Nearby().stopAllEndpoints(); await Nearby().stopAdvertising(); await Nearby().stopDiscovery(); } catch (_) {}
-    _connectedId = null;
-    _setState(NearbyState.idle);
-  }
-}
-EOF
-
-          cat > lib/widgets/radar_widget.dart << 'EOF'
-import 'package:flutter/material.dart';
-class RadarWidget extends StatefulWidget {
-  final bool isActive;
-  const RadarWidget({super.key, required this.isActive});
-  @override
-  State<RadarWidget> createState() => _RadarWidgetState();
-}
-class _RadarWidgetState extends State<RadarWidget> with TickerProviderStateMixin {
-  late List<AnimationController> _controllers;
-  @override
-  void initState() {
-    super.initState();
-    _controllers = List.generate(3, (i) => AnimationController(vsync: this, duration: const Duration(milliseconds: 2000)));
-    for (int i = 0; i < 3; i++) {
-      Future.delayed(Duration(milliseconds: i * 650), () { if (mounted) _controllers[i].repeat(); });
-    }
-  }
-  @override
-  void dispose() { for (var c in _controllers) c.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: 220, height: 220,
-      child: Stack(alignment: Alignment.center, children: [
-        ..._controllers.map((ctrl) => AnimatedBuilder(animation: ctrl, builder: (_, __) {
-          final v = ctrl.value;
-          return Container(width: 60.0 + v * 160, height: 60.0 + v * 160,
-            decoration: BoxDecoration(shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFF97316).withOpacity(widget.isActive ? ((1.0 - v) * 0.85).clamp(0.0, 1.0) : 0.08), width: 1.5)));
-        })),
-        Container(width: 68, height: 68,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF97316).withOpacity(0.12), border: Border.all(color: const Color(0xFFF97316), width: 2)),
-          child: Icon(widget.isActive ? Icons.wifi_tethering : Icons.phone_android, color: const Color(0xFFF97316), size: 32)),
-      ]),
-    );
-  }
-}
-EOF
-
-          cat > lib/screens/home_screen.dart << 'DARTEOF'
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:vibration/vibration.dart';
-import '../services/nearby_service.dart';
-import '../services/shake_service.dart';
-import '../widgets/radar_widget.dart';
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final NearbyService _nearby = NearbyService();
-  final ShakeService _shake = ShakeService();
-  final ImagePicker _picker = ImagePicker();
-  bool _isSearching = false, _transferring = false, _done = false;
-  double _progress = 0;
-  List<DeviceInfo> _devices = [];
-  String _status = 'Shake your phone to find nearby devices';
-  String _deviceName = '';
-  static const _orange = Color(0xFFF97316);
-  static const _bg = Color(0xFF0F0F0F);
-  static const _card = Color(0xFF1A1A1A);
-
-  @override
-  void initState() {
-    super.initState();
-    _deviceName = 'SS-${DateTime.now().millisecondsSinceEpoch % 9000 + 1000}';
-    _nearby.setUserName(_deviceName);
-    _requestPermissions();
-    _setupCallbacks();
-    _shake.start(_onShake);
-  }
-
-  Future<void> _requestPermissions() async {
-    await [Permission.location, Permission.bluetooth, Permission.bluetoothScan,
-      Permission.bluetoothAdvertise, Permission.bluetoothConnect,
-      Permission.nearbyWifiDevices, Permission.photos, Permission.storage].request();
-  }
-
-  void _setupCallbacks() {
-    _nearby.onDeviceFound = (d) { if (!mounted) return; setState(() {
-      if (!_devices.any((x) => x.endpointId == d.endpointId)) { _devices.add(d); _status = '${_devices.length} device(s) found!'; }
-    }); };
-    _nearby.onDeviceLost = (id) { if (!mounted) return; setState(() {
-      _devices.removeWhere((d) => d.endpointId == id);
-      if (_devices.isEmpty && _isSearching) _status = 'Searching...';
-    }); };
-    _nearby.onIncomingRequest = (id, name) => _showDialog(id, name);
-    _nearby.onConnectionResult = (ok) { if (!mounted) return;
-      setState(() { _status = ok ? 'Connected! Select what to share below' : 'Failed. Try again.'; }); };
-    _nearby.onDataReceived = (data) { if (!mounted) return;
-      setState(() { _transferring = false; _done = true; _progress = 1.0; _status = 'File received!'; }); };
-    _nearby.onProgress = (p) { if (mounted) setState(() => _progress = p); };
-    _nearby.onDisconnected = () { if (!mounted) return;
-      setState(() { _isSearching = false; _devices.clear(); _status = 'Disconnected. Shake to reconnect.'; }); };
-  }
-
-  void _onShake() {
-    if (_isSearching || _transferring) return;
-    Vibration.vibrate(duration: 150);
-    setState(() { _isSearching = true; _done = false; _devices.clear(); _status = 'Searching for nearby devices...'; });
-    _nearby.startSearching();
-  }
-
-  void _showDialog(String endpointId, String deviceName) {
-    if (!mounted) return;
-    showModalBottomSheet(context: context, backgroundColor: _card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade700, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          Container(width: 68, height: 68,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: _orange.withOpacity(0.12), border: Border.all(color: _orange, width: 2)),
-            child: const Icon(Icons.phone_android, color: _orange, size: 32)),
-          const SizedBox(height: 14),
-          Text(deviceName, style: GoogleFonts.poppins(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('wants to send you files', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
-          const SizedBox(height: 28),
-          Row(children: [
-            Expanded(child: OutlinedButton(
-              onPressed: () { Navigator.pop(context); _nearby.rejectConnection(endpointId); },
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: Text('Decline', style: GoogleFonts.poppins(color: Colors.redAccent, fontWeight: FontWeight.w600)))),
-            const SizedBox(width: 12),
-            Expanded(child: ElevatedButton(
-              onPressed: () { Navigator.pop(context); _nearby.acceptConnection(endpointId);
-                setState(() { _transferring = true; _progress = 0; _status = 'Ready to receive...'; }); },
-              style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: Text('Accept', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)))),
-          ]),
-        ]))));
-  }
-
-  Future<void> _sendPhoto() async {
-    if (_nearby.connectedId == null) { _snack('Shake first and connect to a device!'); return; }
-    final img = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (img == null) return;
-    final Uint8List bytes = await File(img.path).readAsBytes();
-    setState(() { _transferring = true; _done = false; _progress = 0; _status = 'Sending photo...'; });
-    final ok = await _nearby.sendBytes(_nearby.connectedId!, bytes);
-    if (!mounted) return;
-    setState(() { _transferring = !ok; _done = ok; _progress = ok ? 1.0 : 0; _status = ok ? 'Photo sent! âœ“' : 'Send failed.'; });
-  }
-
-  Future<void> _stopAll() async {
-    await _nearby.stopAll();
-    setState(() { _isSearching = false; _devices.clear(); _transferring = false; _done = false; _progress = 0; _status = 'Shake your phone to find nearby devices'; });
-  }
-
-  void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(msg, style: GoogleFonts.poppins(fontSize: 13)), backgroundColor: _card,
-    behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    margin: const EdgeInsets.all(16)));
-
-  @override
-  void dispose() { _shake.stop(); _nearby.stopAll(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: _bg, body: SafeArea(child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(children: [
-        const SizedBox(height: 20), _header(), const SizedBox(height: 16),
-        Expanded(child: _body()), _shareRow(), const SizedBox(height: 20)]))));
-  }
-
-  Widget _header() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('ShakeShare', style: GoogleFonts.poppins(color: _orange, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-      Text(_deviceName, style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 12))]),
-    if (_isSearching || _transferring)
-      GestureDetector(onTap: _stopAll, child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.withOpacity(0.35))),
-        child: Row(children: [const Icon(Icons.stop_rounded, color: Colors.redAccent, size: 16), const SizedBox(width: 5),
-          Text('Stop', style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 13))]))),
-  ]);
-
-  Widget _body() {
-    if (_transferring || _done) return _transferView();
-    return Column(children: [
-      Expanded(child: Center(child: RadarWidget(isActive: _isSearching))),
-      Text(_status, textAlign: TextAlign.center, style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.75), fontSize: 14, height: 1.5)).animate().fadeIn(duration: 300.ms),
-      const SizedBox(height: 16),
-      if (_devices.isNotEmpty) Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('NEARBY', style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
-        const SizedBox(height: 8),
-        ..._devices.map((d) => Container(margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(14), border: Border.all(color: _orange.withOpacity(0.2))),
-          child: Row(children: [
-            Container(width: 38, height: 38, decoration: BoxDecoration(shape: BoxShape.circle, color: _orange.withOpacity(0.1)),
-              child: const Icon(Icons.phone_android, color: _orange, size: 18)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(d.name, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('Tap to connect', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11))])),
-            ElevatedButton(onPressed: () => _nearby.requestConnection(d.endpointId),
-              style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: Text('Connect', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
-          ])).animate().slideX(begin: 0.15, curve: Curves.easeOut).fadeIn(duration: 250.ms)),
-      ]),
-      if (!_isSearching) Padding(padding: const EdgeInsets.only(top: 12, bottom: 8),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.vibration, color: Colors.grey, size: 15), const SizedBox(width: 6),
-          Text('Shake to start discovering', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12))])),
-    ]);
-  }
-
-  Widget _transferView() {
-    final color = _done ? Colors.greenAccent : _orange;
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Container(width: 100, height: 100, decoration: BoxDecoration(shape: BoxShape.circle, color: color.withOpacity(0.1)),
-        child: Icon(_done ? Icons.check_circle_outline : Icons.sync, size: 52, color: color))
-          .animate(onPlay: (c) => _done ? null : c.repeat()).rotate(duration: _done ? 0.ms : 1200.ms),
-      const SizedBox(height: 28),
-      Text(_done ? 'Transfer Complete! âœ“' : 'Transferring...', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-      const SizedBox(height: 8),
-      Text(_status, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13)),
-      const SizedBox(height: 24),
-      ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: _progress, minHeight: 10, backgroundColor: const Color(0xFF2A2A2A), valueColor: AlwaysStoppedAnimation(color))),
-      const SizedBox(height: 8),
-      Text('${(_progress * 100).toStringAsFixed(0)}%', style: GoogleFonts.poppins(color: color, fontWeight: FontWeight.w700, fontSize: 16)),
-      if (_done) ...[const SizedBox(height: 36), ElevatedButton.icon(
-        onPressed: () => setState(() { _done = false; _transferring = false; _progress = 0; }),
-        icon: const Icon(Icons.add, size: 18),
-        label: Text('Share More', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-        style: ElevatedButton.styleFrom(backgroundColor: _orange, padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))))],
-    ]);
-  }
-
-  Widget _shareRow() => Row(children: [
-    _shareBtn(Icons.photo_library_outlined, 'Photo', _sendPhoto),
-    const SizedBox(width: 10),
-    _shareBtn(Icons.insert_drive_file_outlined, 'File', () => _snack('Connect to a device first!')),
-    const SizedBox(width: 10),
-    _shareBtn(Icons.person_outline, 'Contact', () => _snack('Connect to a device first!')),
-  ]);
-
-  Widget _shareBtn(IconData icon, String label, VoidCallback onTap) => Expanded(child: GestureDetector(onTap: onTap,
-    child: Container(padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.04))),
-      child: Column(children: [Icon(icon, color: _orange, size: 26), const SizedBox(height: 5),
-        Text(label, style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.w500))]))));
-}
-DARTEOF
-
-          echo "âœ… All project files created!"
+          # Reconstruct tar from base64 lines, then extract
+          rm -f /tmp/proj.b64
+          echo 'H4sIAAAAAAAAA+w9a3faSLL57F/R4cxdw04QCLDJENsZjHHCrl/HOJPZM3cOR0gNdCwkrR62GSdf' >> /tmp/proj.b64
+          echo '7x+4/3B/yVa/pJYE2I5tMg96zhmj7urqR1VXVVdXd7TKi2dPVUjNrS32F1L2L/utb+nNRlPXm1sN' >> /tmp/proj.b64
+          echo 'yG82a1sv0Nbzd+3FiygIDR+hF77rhsvg7ir/gyatYroWnhpjYmozY2o/RxuUwNuNxiL669W6rtBf' >> /tmp/proj.b64
+          echo 'f1HVa1t64wWqPkdnsukvTv9r178c2e510NpAyHAs3yVW2cc2NgJMsxByjCluof7EuMTwPx+j9tk/' >> /tmp/proj.b64
+          echo '0X5EbIsVT42bwZB+DazIN0LiOi20XWVF2LkivutMsRNyVAiN7CgMsd9CMOtDG4vcT8aV0UJ6k30G' >> /tmp/proj.b64
+          echo 'pk+8MJA1yqID73CIDnlt5BnmpTHGgQCRdVoSPfKiIRrjMIOCdRqJwdFhLKzPBoQM7xKV5WTAL8ct' >> /tmp/proj.b64
+          echo 'hz7G5YDORZmYrsN7YPghGRmm2meGoGJ4XsWNQi8Kg4pAXQakNF+i1eCb1YIu2ySYEGcsscCqJHYr' >> /tmp/proj.b64
+          echo '7qOPTeIRmMsgyaNNzdzILzPYH/GNMfVsrJnuNAZxXOjcTK0SRKaJg6CFQj/CSv4IUEQ+FvnfmjHX' >> /tmp/proj.b64
+          echo 'aSVJq2hjEpKx4/r4udq4Q/5Xa7VGWv/DH72+lv+rSJoF0msQuq5d2dCkjPLsaExAuGUzyhb2sGNh' >> /tmp/proj.b64
+          echo 'xyQgfDUQWWXTMCe4wn5XNrjU2/i7Rqb2hkYsbEDJVUAtjMqGUC4V2zUNW/N818MgNwGPLNDGvmHZ' >> /tmp/proj.b64
+          echo 'APmt5+SvlLSKnP7na+NB9v/2Nl3/9a3q2v5fRUrozxavWINP28Zd8r/arCv0rwP969u1tf2/klSp' >> /tmp/proj.b64
+          echo 'oAvXK9v4CtvC7B0RMCFRx3VGZCxMekQcFOAwBOs0ECyircX0nyEl659uVp6njQfJ/ya1/2p6rbmW' >> /tmp/proj.b64
+          echo '/6tIafo/jw64Q/7XarqeoX+jUa2t5f8qkrDs0S1zBBALFUx3qgme0IAnbGIyFVCIAS7d0CZOWcAk' >> /tmp/proj.b64
+          echo '+Ra+khuGeOPAWUnsHwobXzaktS8apI6ZwDNMzNtlnpWAeplo0xw15HugkfrWJao3eCXr8ifsB1Qv' >> /tmp/proj.b64
+          echo 'yfaSrA210qlHuy5Hx5wfbuSbuAPFMKohsUk4Q/8wrgxRW/upe97vnZ4M9MHruA4wyBiH96/zhfeB' >> /tmp/proj.b64
+          echo 'z1O+C5+uphcMI9pFBV17XVAr8f71cajWmBrE0aiTTAt884D4AfoeqsLvCi2p8IZSaCw8MiI75Epc' >> /tmp/proj.b64
+          echo 'waQQtGctnnPWKHHonNf0zDwohKDpik9CB/Z4MTWUvCzcCRA8C0fzkmah2+QA33Qd6iC0EieVGBkT' >> /tmp/proj.b64
+          echo 'URczD6sTJH10t4o7C+aSjB2wWMQkpL4CzcLDaJwChwGT0Uy2OzLsAKfRTXziXJ5jTqIgA/FF7SR3' >> /tmp/proj.b64
+          echo 'UEJreerjG9OOYK4Kx92Ldrl3clg56J51Tw66J51et19YAnfU63RP+t1lICenFwAkOQE6Ix2atwpz' >> /tmp/proj.b64
+          echo 'oYKmVTSNrUZ1Qy9lAHUhUp8tt/wKrj/WPuFw6AOrBRrntZaQAUFo2WRY/mRdNlu69oNWLcxFIdb8' >> /tmp/proj.b64
+          echo 'jcaIa+GbVvyjplU1nXblWwvCv2hK638qUp6+jQfZf/Umtf+a+vr8byUpT3+mUp60jQfQvwaQbP9f' >> /tmp/proj.b64
+          echo 'X/t/VpIW0J/L9ydig4ev/y29oa/pv4q0nP5gHz4BD3wF/Zv6ev+/knQ3/ZP9wdeywoPpD1qgvtb/' >> /tmp/proj.b64
+          echo 'K0kPov9XuggfpP/1GqX/dnWt/1eSHkz/YyhumyG5IuFMu7zXlFACLzv/0ZPzH0H/+lZj7f9bSRKh' >> /tmp/proj.b64
+          echo 'VCjvCdrYgG2864eIuLFbD0+H2LKIM449hCIkS3LExoZpG0GAVC5poQxQsYRu1zv+30dasP59HDzd' >> /tmp/proj.b64
+          echo 'HvDh9l+jUa+t5f8q0hL6Xxl29CRs8CD9X6ty+7++pv8q0t30D0KfHfvffHVw+J36f1u1/7ao/cfO' >> /tmp/proj.b64
+          echo 'f9f6//nTzlugqzyc2S3oWrWAsGO6VMnvFqJwVH5deLu3sePLY4895uHf4VzBzu92C8A6A/qrsJeE' >> /tmp/proj.b64
+          echo 'ie8IxoG6FaXytx7vOqXTfdb/zMaPWf53rv9tsPnT8r/Z3Fqv/5Wkr1//wBVi+R8ZkWNOLiYYJADy' >> /tmp/proj.b64
+          echo 'YO074W7hR8FXLQZZYaXavg3bDe3EvSChjfcNv7AXH2bukBBPpTwRVa+JY7nX+1Bn7LuRYxX2Yqym' >> /tmp/proj.b64
+          echo 'a7t+ZUjx7VRoVdEvzq5zOnni+lPD/n118ncgGRes/zbPPDYcMsJB+JjVf+f639Jrtcz5T7NR09fr' >> /tmp/proj.b64
+          echo 'fxVpZypIjIDETtAS3LBbmISh16pUAhPWhBHE+33qEaJXmKiCkBFAezzoYedluYz2QWeEMFUTVLTx' >> /tmp/proj.b64
+          echo '2DBnqH3WQzuorpdQuSz4PwpwUPawPyUBi+KR6yW1sLQEQNs/+tC9OD29eJ8EP8g6U+OmHwf/7Bbq' >> /tmp/proj.b64
+          echo 'IL8qj25m0D447p3ct7G5o6fDruvfP8moB/1Oe05vKMKzGPzQNsbBbsHBIMwPXf/IFXFbTzMdP3XP' >> /tmp/proj.b64
+          echo 'L3r97pNg65yenHQ7F5m5+0gOySMmq93pdPv9wcfeYW/Qv2hfPKarnfftk3fdp8F10m2f7/+L4zro' >> /tmp/proj.b64
+          echo '/tTrqEE+D6dkMl8yGxV9/O+I+DRmyfXRCTb84YyGbzvYZMFHj2FBMauHvZPu4Oi0077onZ48YjIE' >> /tmp/proj.b64
+          echo 'us5p+7yfQZgMrB+6PnVJVtAxtojxiN6fd9sHg+7PF93zk/YRUPL0vP2ue/eqrj1ihB/Pexfdh7dZ' >> /tmp/proj.b64
+          echo 'e/2INtkwj7sHvfagdwyt9ZUJVQL+cn2wjSG2dwvJni3fTd7md7cKGhqt9yUPSa/DgkE1Jd7U8CrE' >> /tmp/proj.b64
+          echo 'HNjMKsR+HpTyK2icI6Yfujch9h3DFlTfLdCAP9XkMqRrGSkp3T9NdTcX5gLiG+rLxpbAPxeG9/jY' >> /tmp/proj.b64
+          echo 'tQBlAPavjS9cbz5oSC1FGC63G1UDeC64yYIOOxPDGWNY2a5PZHDc50s8G7qGb70nloWTz8+B6WPs' >> /tmp/proj.b64
+          echo '9Mlv+HMAhitswcJ+ksUu0cEfY+ZG4QEsfrbUP49cB6BoCa9+xMo/A+IAZuZzROjg5ncR6G9dAw+0' >> /tmp/proj.b64
+          echo 'TRPb2DfumCtu9fbdUdhzvCjkk2ZYn8CcOscBdFEhISPjFIdG2TJCI5Wdp+XS0wbViF+IR9rUMXlS' >> /tmp/proj.b64
+          echo 'pn8l0y/ihECL8ojY0OReDiljv4WLkFfWOIx23O6d5BpgSGDl4LHrz5ajkVDaUfvDSed99zzf28qC' >> /tmp/proj.b64
+          echo '7u5U5DJR8uZPeboLYq67cqrnU5u5AkBKJUKqokgEupGRZuTaw/PHSsn+T1zrSi7mPlkbd/p/9Wbm' >> /tmp/proj.b64
+          echo '/mejWVvf/15JotHdgvKfrqaGD4Zn+efpTeOdvKihgTkivAE/77JgfFmAWaT8P3BIRgT7u+tXI/6I' >> /tmp/proj.b64
+          echo 'Kbv+n+MK4MPPf2vb1cb6/G8VKUf/ax80O/afkg8eRP8mO/+vNdfxXytJC+kvbu6Jz0eZBXfp/7qe' >> /tmp/proj.b64
+          echo 'oX9Nr6/f/1pNsgg9ph1G1I7fNwK8++68fXDUHXzod88H70+PuxsqxJkRTnYlh9CCYOM34tGtO55f' >> /tmp/proj.b64
+          echo 'WZbOqaji/eDbu9ThHPwvdTlj/4qYOH5oAEyUigocSN58rVXLsDPWoJG14fGVKVn/mfcdnrCNO9a/' >> /tmp/proj.b64
+          echo 'Xq+r77/Q9/8a9e3qev2vIvGb2ceGY4zZjU1xCdTCI3lLt29d0tWLdpVLrLQ40QhQ5OBrdBZnFEsx' >> /tmp/proj.b64
+          echo 'JH1MpFjIvvlUKGnXJJww11E/9LExRbcKQs12DatIwpK4VbuwR0qVMQ5FB2ZF6dXQAuuykPTFCEC0' >> /tmp/proj.b64
+          echo 'hFksL6H3kW2/Qmot+mweffGEPnyS67xy7TiMfCeDkF++hSngV2EddkeXPT1YLHx3m4b9UpFPGcr3' >> /tmp/proj.b64
+          echo 'AdlTXFLCFQQSH3tuQELqNlSvEo9ddwyzmwxwalxhpwNU9A1byebIzhilz1w/jAvZFeH8CwDzLvJz' >> /tmp/proj.b64
+          echo 'qDIlDPYLMmCA3l+vxrd+lzwekFR4relao8Auos+UK9S08rybxhJbqkl60TiFAYYhJhoVWuwW+7de' >> /tmp/proj.b64
+          echo 'V3+UpFVsMnzmN4AfYP/XqnUa/1NtbK3vf60kcfrDkmEPAT5PG3fp/60c/Wt6dR3/tZIk7nhsCj3U' >> /tmp/proj.b64
+          echo 'EvK+MjXg/wT0HmWLzTcbWTiuewb0wAm0lfKRrcAPooLKxJ3iAf+QIOKuSHL+2PY8hG9C7FiQG0IP' >> /tmp/proj.b64
+          echo 'bBwEH4lF30qh6om+uBum4Yu3QUT3p5d49qX0hqrLH13QFD5hT4+IuuzNkCLTwR3oIzRBUdG/JaH2' >> /tmp/proj.b64
+          echo 'hCY/FqOmiIX6DGkUWAttJq1uvtqQJskwGvcn7nVngs1LbNFDsH3Dcej7xkwvSUB2WthC7ATqwAiN' >> /tmp/proj.b64
+          echo 'Yqyahz4ZT0KHPce7H/+mE3T5KgYKTGM0cm0riTHr0MCylpgP9lGs3hweVtl/paQmC0Drm7z5TvKh' >> /tmp/proj.b64
+          echo 'jXx32sfYKirHPQF8L0B8+EOzrm8riO/Z85Jmut7sI5h6qYYif2SYON+M3qb/Kc0oPym1LvhA3jF2' >> /tmp/proj.b64
+          echo 'O2Tc5rmeB9bChSwtxpPMulIsaXFFBVkUYEnqOn/vWJbFQJRfZQ/fw29++FoU5cBq3Hz61uv3sYnL' >> /tmp/proj.b64
+          echo 'f7nlfh5D4EH6f4ue/9Tq+vr+z0pShv7sCuBAfD6VSXDn/r/ZVPQ/pf92da3/V5OkmqakbhnBzDEV' >> /tmp/proj.b64
+          echo '3c0ywRKYzDEAAlDqrh8MYGMIbKN8zNXunKGYsg1o4IspJKvlRkMbo0E48XEwAR0Hm3q9oVXfZAGJ' >> /tmp/proj.b64
+          echo 'E6IBKFzQfiY+pi6HH6pVpu+5/6AfDfkj/rBF3BExLCC1aWgD7InDvbdoEERDihZ0A74gUww50MGQ' >> /tmp/proj.b64
+          echo '9Y8huqLP0lFuCIvs5yE0RdEVS8h1GJi0Figq6IGRa4b3pRjQZ/iJMz4DDeNaLdRn09MDi8O/ApMq' >> /tmp/proj.b64
+          echo 'IvJnSbNJAPZOsRjjpi4Tx7BhLz+GJoJ/Q2+wdoP+juj/v4f/z9jvGfv9G/v9G9NGbBc9QkVacU+Z' >> /tmp/proj.b64
+          echo '0ZLiMeCoHfcaUMt50OCzGGPgOJKZQbvcPYI+f05FhkAlzSKjEfYxEESp8LKkEeeY2DAwDKQDS25P' >> /tmp/proj.b64
+          echo 'JVwp9Uab2g5F+UYpE3Oudk16g8Rba0IJJ6RzvaJKoreaaUCjtkQhyEaH82dR349OGfnvsOjRJ1YA' >> /tmp/proj.b64
+          echo 'y+W/rtdqekb/b+vb6/iPlaSUqA9nHrYGNGJsjsAXrGEmgcWVfFZG+B9gykY9Z+SyZcnFT59fHYRd' >> /tmp/proj.b64
+          echo 'nueCWO9Zb7JFNDTtTbzfS5AUb+NQ53BCAi1B8QqlSygGKh9AOmAnmoqoaLanRLeIWDZ+Bfsdwzfp' >> /tmp/proj.b64
+          echo 'P7jyCokRYMAT+oYTjOgOkhZYrgOQ8OX6VNLwUQlkeZ3GB5EuHhAQOaksbcAFEv0nY2hMYKoQBNgu' >> /tmp/proj.b64
+          echo 'CExCAebUyqpFMWFywfao/tzMv+WwmdOnUJFGG86gqvy1G2dqZ7UzGvh+LhUsawM2TT57vhOa6PfL' >> /tmp/proj.b64
+          echo 'H+CT4eXloE7jWeQkVed8ELA/u2qmRsnAWqhUUMew7SFwWiCleax9E/KX3oJS4J+HdBf8JgfLu6LA' >> /tmp/proj.b64
+          echo 'HblBuAgMqewjsixWi46SIek5MJeQf84jlvOYhq5ry39Qh9VI4u7PcRDZc6rw3pEgnq08yAfo1Osj' >> /tmp/proj.b64
+          echo 'Qu0jWIu8Avw4xyYmV/MqCDPK892xL3tyJj7y0AoNGCT7xYOTLUYPlXLUfyKItyfIqBKdFit0Z0Ap' >> /tmp/proj.b64
+          echo 'Poi1Mw4/CAYqKsucs7vCWnzty1rA2CHrh9ppFCRaXrBVwDV8eixU/9t2MUjshMMojHy8Q6m2x029' >> /tmp/proj.b64
+          echo 'vhQCsPCY+Sswh7AwpaViXBskFJNSLGmsXtu6oqdBNEw8cW3E40g8DfHyUtw5cq22lHWbFKs81HNI' >> /tmp/proj.b64
+          echo 'SGgodgsVCXApoasgZUHleFQMWkLHMpLxtGJKzW+QM61ojU5ulLHYqHXI8zUS9AXjZ97dHaQYAqTt' >> /tmp/proj.b64
+          echo 'm3TxPJpqcZ1SGjrfOzFC6rVJwX5B2M69ATy/sVj037cx5s5LtzZ/KtWFzaYxY/Cmp0aaost7S+Vk' >> /tmp/proj.b64
+          echo 'qu10M6KL84jLNQZN83iYIQE2nj05B3cF0zExLbiJLmzgqSuzZ2VZWJHpYjCKzk+kdAtJPC0uOxbx' >> /tmp/proj.b64
+          echo 's2yeSv85RFCVQ7xc0Nu3aHNz+STel5mEN5lyKM/6gkwjNCdI3ebNR8ZMjSwixn0CU0aUUSm5h8SN' >> /tmp/proj.b64
+          echo 'moR58yru3uItj2sZdyg6dC3BnkWC/QllEh/r1yyJ+exPHTHe03B/DtUdnH5mzI5cwwLTjOCrmMs9' >> /tmp/proj.b64
+          echo 'Y0YjJfKMJwo0utOirpUz/k3fs9f2/3XR7aO//U3W1oazEAcyPiXLommTUMx3qubLHB9Kk1BA61q1' >> /tmp/proj.b64
+          echo 'dB/Gppug+/CZHIzYQX3wwHrFYkYi9pGfEJ6vhW5o2PtsvHuomh9rpueiFhumbI7u/Sooh29Bx1Ot' >> /tmp/proj.b64
+          echo 'c3Gg0KPP5UP/A7uvmpMOXz1Lz8D7Pv4EnPpEkj+DSsGR6fgAOp7tj7CqoRKb+Hm7rMzGZmHH5k+G' >> /tmp/proj.b64
+          echo 'ujWPZzpr2MjmBSWLavOsUVlx6XK4B4lXruSpf7NNher9NyqsgrSGguLCSaOAyoZmGVxiNC7iiSUa' >> /tmp/proj.b64
+          echo '5Q5dsvbIrjxx/y/7B2aeLQDorvj/Rk05/6uxf/+rtr219v+uIn1t/I+Ei4P1M3Ayooz6gpknh7JY' >> /tmp/proj.b64
+          echo 'SnTx2JxAvA27Txx20xs7AUg8vmuwyW/Y4mKGC6L+LAjxtDOhR24g6cMzH3PFf5pcqA+Kv/DdnZKn' >> /tmp/proj.b64
+          echo '0T75gOGD9ytD50cODfGZF09UYl7jb02WlSVx/iOCtJ6njYfEf+gNdv9PX7//upqUpn82SO9p2lgu' >> /tmp/proj.b64
+          echo '/xv6tvL+F6f/Vn397/+tJqXO/4ibDf5YeiL4QF0xMBxCQSuZ70eHmMoKgG2MBx4xL6FT6seiCskb' >> /tmp/proj.b64
+          echo 'OoOJ4YAV6lfyWYsqX5Eh/8dxK/GvLKimLT1ZXwCZj8FKA15zxVnxDSgb8K/MuWsSsJiOpx1Fdi6c' >> /tmp/proj.b64
+          echo 'VgluXBpLyxDsJNB7CP5AFrfn+TlOUipy2Qks71O2MN2zFOLkrDhzlsonMXugKo5T+QmyGm40CERo' >> /tmp/proj.b64
+          echo 'iZqrQvcok5wxHkGCVwBayRVnruyYb0CC+LQIoOL9Gi9UN6f5UrpzVHNl3JM8sYMyFvNE98Y7ifOb' >> /tmp/proj.b64
+          echo 'hc4wrgCAX35NDt74yRf1WYjIZDRzIx95E9pO6NLhWUjMlsCwqdZOzjkphs38wfLA9ekZGpTmooBz' >> /tmp/proj.b64
+          echo 'Z8mD4TgFJ8KQ83Cm4VspSBHwm+M1ZjESMAIlc/EdLmdPJV/sKtOj6ffL392mo5u0qRKQ1CeOibue' >> /tmp/proj.b64
+          echo 'C3vW/6FRZFX0PdLhz5dNgY7Pm6aeWCpNyEaFnzx5ti1I4oxgR+/FJ9pJNiUUP3opDmRIWfZsku/1' >> /tmp/proj.b64
+          echo '52JP7fu5RfyL2KgncJot3oV7lS8ayucJl5X1TWNpXekowMuAhBNpDgif3I9kRDibB3NggI1Dd15B' >> /tmp/proj.b64
+          echo 'wB8J4yW/yqOKYiYQLDf/8rRYEDZ14AQcU1QctdQr+HIKBdSPL1wz0hsSOy+KqkeQ1ZDLVDOcWbF4' >> /tmp/proj.b64
+          echo 'w6ThjRKfQn2LlvJdyrjg4+qWVUyfHygL/bvbGM7GzjicfBFruxiU0IgNho/w5abidxe/vkh3jTjN' >> /tmp/proj.b64
+          echo 'yk4GPQyjc0EeNRlxB308hfX8cYJ9gLDYfFiZ+SDqQFnUoaxMgu7UC2fUF64K3VJK6slcTdPi4S4e' >> /tmp/proj.b64
+          echo 'ZOaMiY/0lQhBSLx19DJH7P88AJvGHSdwi3Bnz2cocvfyUdMYj9O9RG/RZkf6016iPrbhF7qeGCEV' >> /tmp/proj.b64
+          echo '9CzEBw2x7V6j//zf/2+iVgzN/n1kg9jY0tAFfXtsTL0895gr9WCBLQ/mq33EaBbpRskzXDkmnlSW' >> /tmp/proj.b64
+          echo 'q6hGnQcE5xbEIQwOeiB6KsJwwMaxlRWweJhnSQNF7+Hjo/aO0kdv8XQq52K0rUdN5QIbJLP6TBuA' >> /tmp/proj.b64
+          echo '1NM3ZdLU7mjcMqKM5GORO5dDUuI1jsyVd4bp2lU79vlzmubpsf0Um8vccMZFK+IZLaRvSR/8vPFn' >> /tmp/proj.b64
+          echo 'Rq8yTM7CWjYf88QIezw1bTElkkXORGwaZEKHsvpnnhi5V9CZMqPzGYOiPnat/7Z37b1tI0f8f38K' >> /tmp/proj.b64
+          echo 'Bmgh6aKwettQ73qwnaQNcLm72sZdgYMr0NImIkKJgkj5kSLfpJ+un6Qzs7vkPiVKtnNFwTVgScvl' >> /tmp/proj.b64
+          echo 'cp/z+M3sMErO0jxPF5dzxnJpoxRn2sbyi2SgN+a5MRLE5FWgIKvipNMFlmJozswjDIB5lq5nIAUX' >> /tmp/proj.b64
+          echo '6+iGfl9Es3iD576UXyFJBdMoaebpahyIzGm8nm4SGPveoNWyzljRuTw8LYe2A9hPl9EHdgpKRfk8' >> /tmp/proj.b64
+          echo 'GN9kNg5+jig4oXqIbMWzZMPfgFbzbgmLJqOzbT9cXZzBM9tBt9cO8BOer55eE/XCeGwWS7Va/rL1' >> /tmp/proj.b64
+          echo '03tYafFnGJb3yi+QIpdtrSxVs2awcH/T8gOMv5vDrerYyQQaWz4fB4NOO5gzPDgH39tWqRnsR7kr' >> /tmp/proj.b64
+          echo 'ztL718VPu0Jxzk+c8MMAHuwBHUBn7LjTsWveOovlhLXsO60sK0MgqgjcQqObsn+9jlVy9wCNTsoB' >> /tmp/proj.b64
+          echo 'gu+PGyGxyqHcJX6jfibMNThiLIUCRHEqfgKdH99b1gm7rmGRAyqHMkRrol5NW3aq0rAW65MP5zv4' >> /tmp/proj.b64
+          echo 'aOK/LCQFbyJiIrQD8yEZrdm+/ZCqE9UdWCXxaKU9oiXNshtPUVedxzR3r927eZxDRyiQLXWme8x/' >> /tmp/proj.b64
+          echo '/Spa+Lb4Ht7B8j64p1U72riLoAPIIQV/xKCoZOVGlZvim2SNvcbA3qxaf/uH77ITq+QFaL/uxeWk' >> /tmp/proj.b64
+          echo 'Wpje3K8i5AGuuSoW5k8bDM4Bj98AF3JuOEwoY4F0RG4xphOFmn6MbuOPEeh2OEZNeTT7z97ykg3v' >> /tmp/proj.b64
+          echo 'dliw0xfX/sUkZkzvWUi5b4Gj+PoIN8azgn9yAnAJOcY0r9kMT6Utcyf94MnP0rKHxYKBsDBtSi7r' >> /tmp/proj.b64
+          echo '3KpKmzi528XOXakKcwAy6H2494JYOrTNGkCtcZgdO0fpxF50RHuUe+z9lGQElMTTcGe2M9PYloLi' >> /tmp/proj.b64
+          echo 'e1hGpW32JmG36Dz5+24zyyeuwjbzKTCOpxjaoa4GOsqbmKm3YCnlX7Bo9iC0HFQWVczATl8OJh76' >> /tmp/proj.b64
+          echo 'fFUhHrZsLnh5TSWASpzSyvsqREIRPHyixiMJxPUOvq5ddwXB0GNPHJmQMcokPyNyaiDFpJ6Lraw5' >> /tmp/proj.b64
+          echo 'ZpmOpZNsCaux2Xgbr2FhZaZZAeUeKQPBVoqEDPiidJpXFVWOO3IzS7zAjc0Ra2mSww8ytJTTxMP2' >> /tmp/proj.b64
+          echo 'j7n95ZJ+hB/x1QdrkJDInvf3TZTQG4WPJUyAnaPqZWdkG5THl16H3KNWNgXhI7w5XEX5HN0fo9lp' >> /tmp/proj.b64
+          echo 'xn0Xt4EQW+iVG4VwESwNgiDXl4BQbx1zUDqRfiqHsDBQSFdLx/S+aPPeKuPkQRQq9PFF+snsopKj' >> /tmp/proj.b64
+          echo '9I/gym7YCcaurnIwk9YoStC5DtkF//k3xy9xQPzI5Rfv+nf6RxpDJstUBpmqAUrbEM7DFsUeRj37' >> /tmp/proj.b64
+          echo 'KLzYyQJfWmQfZfcuRSih9ygvAJtZh+mHQhIIEVy6xDvPoHPFFxVdWuaCNEOd7W20V1NoSsBnKxJ1' >> /tmp/proj.b64
+          echo 'w+YgoWC2fPaZyAk/JGmE0UkN0MrDufZlThj3Pl46OCq5Bcu4R61ykC1b5SzOVmnGlPADwtaHIQlM' >> /tmp/proj.b64
+          echo '7FBfgmTTLO53PmLfMFZylpveYb8pRvImnQE9fRrkrRRA5uk6/owIT2KBP1ugN79iWh1XmswZhqhs' >> /tmp/proj.b64
+          echo 'VkY8RlbJQjQXTZ3gGDVt9j8h4wuq2AfjYPvzfLEWim7qM6/o+xLHPE3ij8sF7dz3ZlaYraIpO2P5' >> /tmp/proj.b64
+          echo 'HWMFtOmaBTFb03WaZUal51Yeh8fbnunkkp0jnJpM+0h00x1Cc0mGej33VZewd+KCTRNGgVsRCsTF' >> /tmp/proj.b64
+          echo '/6oTDi2BTptd6ujED5TtBRFxPBfUVA0r0gTsa+X7bpOM0pi/sgz56GuWM4xIoI9yuryKVuOCuzrw' >> /tmp/proj.b64
+          echo '77Efy92XVHQH7aDUXWw4aw/I14IAqiC5lYBxm+ZsA4C9DegPbYpi0xE+wLitt6F2Fk6MszVZc+7Y' >> /tmp/proj.b64
+          echo '9sMhHC92kEAfmDF0lBQbGp7oUdQqL3QDqLHlB5mujZyWk4xe+2gnp+eqeqTJb7hX6KiPpKrF5V9i' >> /tmp/proj.b64
+          echo 'VsRKEtd0PuaaJJOdYIBm2CpyatGLjzesCTQU3+IFndbcHtT+myC1EBnV/qNAQLSYi2r0NZzSQ9Vi' >> /tmp/proj.b64
+          echo '1cmsQ1E21vIxrAt1ygal5aYbqmumFQqnz2Yr/AAE7d1SMf72O51wkWnhK3ezbMNx5Mc0J9+RlpTV' >> /tmp/proj.b64
+          echo 'Ue9rGuVfaMOr9NYh7WwjYukyeeDmTjQz3pBF1iZbyh42BrYSi7ZnzrfQ9GFTqEHhoGqSAm58EFTA' >> /tmp/proj.b64
+          echo 'tbfdVMBFLxS2Tn4pKAKgWEyHxWD4HksbLDuJA1y6fhRVUNeLLlUZe3wfIWgLXeAjxt8Pa4zOASKQ' >> /tmp/proj.b64
+          echo 'U1bYIg91PVc94NdOeagbahPi2brq3gjDsNi4i2gld/E5aIRVJwvLKrEigpk1cYZg4tX0aCvbO/hx' >> /tmp/proj.b64
+          echo 'AowiY1SQXKYOlbgi0KqCvDtt0Qbt7jkcM3aIHU55T9CGvmK172tW+4rCWxVL/XYbvXvfK/06zKze' >> /tmp/proj.b64
+          echo 'VRevf6m7zD4uY4+uBz+FZiVIyoyinz3WLL8nPm5qJpbQxqkd6BKKKf1J7eZd/YnX7snyW9R0Kxp6' >> /tmp/proj.b64
+          echo '9xVWZjMgiubJ65CpqpmBqpl+nlaFegLczLKDLGIQ6TYLPg3kJ/WZrVO9TB6troD0slx6VfETQ1dq' >> /tmp/proj.b64
+          echo 'NrAtEBQ+/bqOVrs2MF9M555V9LT+J73KRqGSa0nURpF2sySesX80bxjxH6BSQ9jGmzUK++f4kYUs' >> /tmp/proj.b64
+          echo 'ythPm9whGPeGJBhbTFBXSwTr4+YC6lXwnQCfv1d2DVtyHSsoFtwWfeYACXVfhtHtKI5wXV3SeHqW' >> /tmp/proj.b64
+          echo 'QR97MwxiFVp1clw5/5jiCwAm/LGTlHuQBGNxEY0Rxi6klTXs+VvogwW1G4rVBaQriR6Abk054RJt' >> /tmp/proj.b64
+          echo 'o7i9UCFQsBWLQKo1bl+nue59K2/E1Rbg0q+okGmOR5aGKiptyEAtsBoWK5AeWWnxuVLUb7SAPZme' >> /tmp/proj.b64
+          echo 'qu7kXqeqJ9l+cizH+Ww9/HFOYBVGXZX6zpN4dYH0XB2UKvT8xLXef4iR90kH+XfLGb7HyUQG6aXg' >> /tmp/proj.b64
+          echo '49KSZXGFvxWbWr9kMT7zPRC9U/wz2Aw9TtxwmtxFDxlCTis2O6VdgESBBtW3mQ+YVKWixh/+1Sxt' >> /tmp/proj.b64
+          echo 'dt8goWqFecotbKfZ2/gepLtO68sfH7d2+ebfqoipy2Tk7h/HRAjBgt2kioienvd1jd6QX2KL+lmy' >> /tmp/proj.b64
+          echo '0jZnH6f9s7i4/WyIKOR3+flirBJsq0PAByHKKcZjSqIbloxLAGPNgvepwy7xzBK0ObcWPLynj1FV' >> /tmp/proj.b64
+          echo 'z6J9Bcz+SFNxbf+iJ5AxB2bffZu6QHy8QEFpo7MtZbaowouf5YpimKeTBPGz9YPk7LCUuBNDo614' >> /tmp/proj.b64
+          echo '3ZTKs1sfLBmM+RBYPzCek9k6vmUTdChWH4ROKtpSFMqJ8NU5tx1yQAJcZ6Ak5nO2FOfDIvJTbrQO' >> /tmp/proj.b64
+          echo 'b+OKrbN0KRvWpkNmeWQI34c1bSpqkq279kyibAweT6N9XhygoR3cDn4B5V2e+uR2K2POTTVccDuv' >> /tmp/proj.b64
+          echo '/UvYvuhD4R5bjF6Pcs6rKO26cSJMlfaWCd7uNF25AP+OsUO3WPh9WAVRZz6NbrylZ7bUw7xM3JoI' >> /tmp/proj.b64
+          echo 'OV8Sz0HBR52q6uHQ9Bl0YhK6hf9rhx7i8V9kSInnecZe738aifg/9fsfv0rS598KKfIkz9gR/23Q' >> /tmp/proj.b64
+          echo 'Hw2N+R/S+z/r+D/Pn6rG9BFBXBRr9bbIMhyDotAn0qaN5E2cMVUs3mXEGfMNHvI+byQapRpXKBrl' >> /tmp/proj.b64
+          echo 'siMWjXnVCEaj1Y2cL7gir2XQiG9jPOCDpd7H9/GSuptgDRS6pdBFUTpYp+i7zF+IIH5kjw11olQF' >> /tmp/proj.b64
+          echo 'yhA+M/zIQAjBMv120Iyp945mSP52i3DUmMa4sE0VABCfoNfid1ONmoL4SQGSyMjreGa6ia/mikkz' >> /tmp/proj.b64
+          echo 'g49vgz58vHxZqoHcSTecsSR6ANHLU3kMOvVoCPUHVnCNwmtZ7fxv8XUBa1nn1Y+qumlS+29h/0/x' >> /tmp/proj.b64
+          echo 'Rd9q/a1gqjtlPpOnphRmRBfkKdFeAZkUaE+ZJeQrWBggZhdDFZUQrd95wC2MoSVW6TtZY5vTfJ0o' >> /tmp/proj.b64
+          echo 'iwkVTjqtrQtKkVxpsHjgBkO0LM93g6Y0saEBTiduYfHgzSFBPKbyz8ugSAjFRiB6Bi/hjm+C7sg6' >> /tmp/proj.b64
+          echo '/SM85bmUCqUFI5OkJPg+wCC/wavgtgUVdMKTIfqph50TsyKf+bhMYqKwWbaUKefMffWZzi075Pht' >> /tmp/proj.b64
+          echo 'Iq2JuYngTs5bMGkKgBjiEKjpYoXqQBud/n0HZKR2aTtMYnLcZPvFGaCPpnpopfFVQrTmAz5SyiXP' >> /tmp/proj.b64
+          echo 'bJanzbVs38nzyrNXbea2z8Zun0W/9uap0nsS3e21ZFs+Ase24hjBXfwhnuQMlHvSyqX9Qzeu79V/' >> /tmp/proj.b64
+          echo 'C1oS59v3BId+XxXrfzqFf1ptbrIVm4YP0SJ5nmfsiv98fDyQ8j/8G/L4z3X8z6+S+Nt0RMhJRNmO' >> /tmp/proj.b64
+          echo 'Zqx4keo4AIH3Pl4A9Xl1E2UgmiOMWLwiDxhpVvj70b2wlkCmm0/ydBw0lrDtG0cgG2U8tE8IfOJl' >> /tmp/proj.b64
+          echo 'F1/IdxuvUy6qwIbMZp+g8F++6+P14NsBfjSOoBkrEMjZchqzDIsJxWTMRTG8R+RAhv0ewnHwT6oP' >> /tmp/proj.b64
+          echo '61feTQvZA5FtB/qEi92uuKpGD8V8yD7Gm6J8jsYIUgIgvxd2wy7kq9FJIXsE2Z2yzTLQKT29T1cK' >> /tmp/proj.b64
+          echo 'j0yq/CQcYIdvJ55OA1HNcmfPZYEk5k/mnT5SBmuTseyV1OZeweSSYzAeWqzJYJ3qVKc61alOdapT' >> /tmp/proj.b64
+          echo 'nepUpzrVqU51qlOd6vR/nv4LgHrg1QDwAAA=' >> /tmp/proj.b64
+          base64 -d /tmp/proj.b64 | tar -xzf -
+          echo "Files extracted:"
+          find . -name "*.dart" | head -10
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -611,10 +197,10 @@ DARTEOF
       - name: Get packages
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ShakeShare-APK
